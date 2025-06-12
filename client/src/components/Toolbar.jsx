@@ -36,26 +36,35 @@ export default function Toolbar() {
     }
   }
 
+  const tools = [
+    { key: 'move', label: '🖐 Move' },
+    { key: 'rectangle', label: '▭ Rectangle' },
+    { key: 'circle', label: '⚪ Circle' },
+    { key: 'line', label: '📏 Line' },
+    { key: 'polygon', label: '⬠ Polygon' },
+  ]
+
   return (
     <div className="w-1/6 bg-gray-900 text-white p-4 space-y-4">
-      <h2 className="text-lg font-bold">Tools</h2>
-      {['select', 'rectangle', 'circle', 'line', 'polygon'].map(shape => (
+      <h2 className="text-lg font-bold mb-2">Tools</h2>
+
+      {tools.map(({ key, label }) => (
         <button
-          key={shape}
-          onClick={() => setTool(shape)}
-          className={`block w-full text-left px-2 py-1 rounded hover:bg-gray-700 ${
-            tool === shape ? 'bg-gray-700 font-bold' : ''
+          key={key}
+          onClick={() => setTool(key)}
+          className={`block w-full text-left px-3 py-2 rounded ${
+            tool === key ? 'bg-blue-600 font-bold' : 'hover:bg-gray-700'
           }`}
         >
-          {shape.charAt(0).toUpperCase() + shape.slice(1)}
+          {label}
         </button>
       ))}
 
       <button
         onClick={() => setShowAnnotations(!showAnnotations)}
-        className="mt-4 block w-full text-left px-2 py-1 rounded hover:bg-blue-700 bg-blue-600"
+        className="mt-4 block w-full text-left px-3 py-2 rounded hover:bg-blue-700 bg-blue-600"
       >
-        {showAnnotations ? 'Hide' : 'Show'} Annotations
+        {showAnnotations ? '🙈 Hide' : '📝 Show'} Annotations
       </button>
 
       <button
