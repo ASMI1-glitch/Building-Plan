@@ -5,7 +5,7 @@ This is a web app I built from scratch called **Building Planner .L2** — it le
 
 I made this project to learn how to connect a drawing interface (frontend) with a real database (backend), and deploy the whole thing online.
 
-> 🖥️ Live Link: [https://building-plan-8-frontend.onrender.com](https://building-plan-8-frontend.onrender.com)  
+> 🖥️ Live Link: [https://building-plan-8-frontend.onrender.com](https://building-plan-8-asmiprasad.onrender.com)  
 > 📩 Contact: prasadasmi619@gmail.com
 
 ---
