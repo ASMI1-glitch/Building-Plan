@@ -9,12 +9,47 @@ export default function CanvasArea() {
   const [polygonPoints, setPolygonPoints] = useState([])
   const [drawingPolygon, setDrawingPolygon] = useState(false)
 
+  const [dragging, setDragging] = useState(false)
+  const [dragIndex, setDragIndex] = useState(null)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+
+  const getMousePos = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect()
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+  }
+
+  const isInsideShape = (shape, x, y) => {
+    switch (shape.type) {
+      case 'rectangle':
+        return x >= shape.x && x <= shape.x + shape.width && y >= shape.y && y <= shape.y + shape.height
+      case 'circle':
+        const dx = x - shape.x
+        const dy = y - shape.y
+        return dx * dx + dy * dy <= shape.radius * shape.radius
+      case 'line':
+        const dist = Math.abs((shape.y2 - shape.y1) * x - (shape.x2 - shape.x1) * y + shape.x2 * shape.y1 - shape.y2 * shape.x1)
+        const len = Math.hypot(shape.x2 - shape.x1, shape.y2 - shape.y1)
+        return dist / len < 5 // tolerance
+      case 'polygon':
+        let inside = false
+        for (let i = 0, j = shape.points.length - 1; i < shape.points.length; j = i++) {
+          const xi = shape.points[i].x, yi = shape.points[i].y
+          const xj = shape.points[j].x, yj = shape.points[j].y
+          const intersect = ((yi > y) !== (yj > y)) &&
+            (x < (xj - xi) * (y - yi) / (yj - yi + 0.0001) + xi)
+          if (intersect) inside = !inside
+        }
+        return inside
+      default:
+        return false
+    }
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // Draw all shapes
     for (const shape of shapes) {
       ctx.beginPath()
       switch (shape.type) {
@@ -37,41 +72,37 @@ export default function CanvasArea() {
             ctx.closePath()
           }
           break
-        default:
-          break
       }
       ctx.stroke()
 
-      // ✨ Draw annotation
       if (showAnnotations) {
         ctx.fillStyle = 'black'
         ctx.font = '12px sans-serif'
         let label = ''
-        let posX = 0
-        let posY = 0
+        let posX = 0, posY = 0
 
         switch (shape.type) {
           case 'rectangle':
-            label = `Rectangle (x:${shape.x}, y:${shape.y}, w:${shape.width}, h:${shape.height})`
-            posX = shape.x + 4
-            posY = shape.y - 4
+            label = `Rectangle (${shape.x}, ${shape.y})`
+            posX = shape.x + 5
+            posY = shape.y - 5
             break
           case 'circle':
-            label = `Circle (x:${shape.x}, y:${shape.y}, r:${Math.round(shape.radius)})`
-            posX = shape.x + shape.radius + 4
+            label = `Circle (${shape.x}, ${shape.y})`
+            posX = shape.x + shape.radius + 5
             posY = shape.y
             break
           case 'line':
             label = `Line (${shape.x1}, ${shape.y1}) → (${shape.x2}, ${shape.y2})`
-            posX = shape.x1 + 4
-            posY = shape.y1 - 4
+            posX = shape.x1 + 5
+            posY = shape.y1 - 5
             break
           case 'polygon':
-            const centerX = shape.points.reduce((acc, p) => acc + p.x, 0) / shape.points.length
-            const centerY = shape.points.reduce((acc, p) => acc + p.y, 0) / shape.points.length
+            const cx = shape.points.reduce((sum, p) => sum + p.x, 0) / shape.points.length
+            const cy = shape.points.reduce((sum, p) => sum + p.y, 0) / shape.points.length
             label = `Polygon (${shape.points.length} pts)`
-            posX = centerX
-            posY = centerY
+            posX = cx
+            posY = cy
             break
         }
 
@@ -79,7 +110,6 @@ export default function CanvasArea() {
       }
     }
 
-    // Draw in-progress polygon
     if (drawingPolygon && polygonPoints.length > 0) {
       ctx.beginPath()
       ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y)
@@ -91,9 +121,7 @@ export default function CanvasArea() {
   }, [shapes, polygonPoints, drawingPolygon, showAnnotations])
 
   const handleMouseDown = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const { x, y } = getMousePos(e)
 
     if (tool === 'polygon') {
       if (!drawingPolygon) {
@@ -105,16 +133,60 @@ export default function CanvasArea() {
       return
     }
 
-    setStart({ x, y })
+    if (tool === 'move') {
+      for (let i = shapes.length - 1; i >= 0; i--) {
+        if (isInsideShape(shapes[i], x, y)) {
+          setDragging(true)
+          setDragIndex(i)
+          setDragOffset({ x, y })
+          return
+        }
+      }
+    } else {
+      setStart({ x, y })
+    }
+  }
+
+  const handleMouseMove = (e) => {
+    if (!dragging || dragIndex === null) return
+    const { x, y } = getMousePos(e)
+
+    setShapes(prev => {
+      const updated = [...prev]
+      const shape = updated[dragIndex]
+      const dx = x - dragOffset.x
+      const dy = y - dragOffset.y
+
+      if (shape.type === 'rectangle') {
+        shape.x += dx
+        shape.y += dy
+      } else if (shape.type === 'circle') {
+        shape.x += dx
+        shape.y += dy
+      } else if (shape.type === 'line') {
+        shape.x1 += dx
+        shape.y1 += dy
+        shape.x2 += dx
+        shape.y2 += dy
+      } else if (shape.type === 'polygon') {
+        shape.points = shape.points.map(p => ({ x: p.x + dx, y: p.y + dy }))
+      }
+
+      setDragOffset({ x, y })
+      return updated
+    })
   }
 
   const handleMouseUp = (e) => {
-    if (!start || tool === 'polygon') return
+    if (dragging) {
+      setDragging(false)
+      setDragIndex(null)
+      return
+    }
 
-    const rect = canvasRef.current.getBoundingClientRect()
-    const endX = e.clientX - rect.left
-    const endY = e.clientY - rect.top
+    if (!start || tool === 'polygon' || tool === 'move') return
 
+    const { x: endX, y: endY } = getMousePos(e)
     let newShape = null
 
     if (tool === 'rectangle') {
@@ -165,6 +237,7 @@ export default function CanvasArea() {
       height={600}
       className="bg-white border border-gray-400"
       onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onDoubleClick={handleDoubleClick}
     />
