@@ -103,11 +103,4 @@ If you’d like to give feedback or collaborate, feel free to reach out!
 
 ---
 
-### ✅ This version:
-- Reads naturally like you’re speaking
-- Includes **all steps clearly in one place**
-- Doesn’t sound like a copy-paste from templates
-- Shows **your voice** as a learner + builder
-
-Let me know if you want this turned into a PDF or want to add screenshots. You're doing great!
 
